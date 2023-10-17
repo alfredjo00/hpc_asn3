@@ -1,11 +1,11 @@
 BINS = newton
-CFLAGS = -O2 -lpthread -march=native -lm -g
+CFLAGS = -O2 -g -march=native -lm -lpthread
 
 .PHONY : all
 all : $(BINS) 
 
 newton : newton.c
-	gcc $(CFLAGS) -o $@ $<
+	gcc -o $@ $< $(CFLAGS)
 
 
 .PHONY : clean
