@@ -5,13 +5,13 @@
 #include <threads.h>
 
 typedef struct {
-  const float **v;
-  float **w;
-  int ib;
-  int istep;
-  int sz;
-  int tx;
-  mtx_t *mtx;
+	const float **v;
+	float **w;
+	int ib;
+	int istep;
+	int sz;
+	int tx;
+	mtx_t *mtx;
 } thrd_info_t;
 
 int thrd_fun(void *args)
@@ -45,8 +45,7 @@ int thrd_fun(void *args)
 }
 
 int write_ppm(float **w, int n_size)
-{
-	
+{	
 	
 	for (int i = 0; i < n_size; i++)
 		free(w[i]);
@@ -115,5 +114,5 @@ int main(int argc, char *argv[]) {
 	// Write to ppm files
 
 	mtx_destroy(&mtx);
-   return 0;
+		return 0;
 }
