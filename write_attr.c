@@ -16,22 +16,32 @@ write_header(FILE *file, int n_size, int max_color_val){
 int
 write_row(FILE *file, int* attractor, int n_size, int n_degree){
 
-    int str_len = 6;
+    int color_str_len = 12;
 
-    char *row_str = (char*) malloc(n_size*str_len*sizeof(char));
+    // color scheme
+    char c_0[] = "100 100 100\n";
+    char c_1[] = "100 100 255\n";
+    char c_2[] = "100 255 100\n";
+    char c_3[] = "100 255 255\n";
+    char c_4[] = "255 100 100\n";
+    char c_5[] = "255 100 255\n";
+    char c_6[] = "255 255 100\n";
+    char c_7[] = "255 255 255\n";
+    char c_8[] = "100 150 250\n";
+    char c_9[] = "250 150 100\n";
 
-    for (int ix = 0, jx = 0; ix < n_size*str_len; ix+=str_len, ++jx){
-        row_str[ix]         = attractor[jx] + 48;
-        row_str[ix+1]       = 32;
-        row_str[ix+2]       = attractor[jx] + 48;
-        row_str[ix+3]       = 32;
-        row_str[ix+4]       = attractor[jx] + 48;
-        row_str[ix+5]       = 10;
+    char colors[120]; // = (char*) malloc(120*sizeof(char));
+    sprintf(colors, "%s%s%s%s%s%s%s%s%s%s", c_0, c_1, c_2, c_3, c_4, c_5, c_6, c_7, c_8, c_9);
+    // printf("%s", colors);
+
+    char *row_str = (char*) malloc(n_size*color_str_len*sizeof(char));
+
+    for ( size_t ix = 0, jx = 0; jx < n_size; ix += color_str_len, ++jx ){
+        memcpy( row_str + ix, colors + attractor[jx]*color_str_len, color_str_len);
     }
-    row_str[n_size*str_len] = 0; // null termination
-
-
-    fwrite( row_str, sizeof(char), n_size*str_len, file);
+    row_str[n_size*color_str_len] = 0; // null termination
+    
+    fwrite( row_str, sizeof(char), n_size*color_str_len, file);
     free(row_str);
     
     return 0;
@@ -48,6 +58,7 @@ main(int argc, char* argv[])
     // int str_len = 6;    // length of color string
     int *attractor = (int*) malloc(n_size*sizeof(int)); // [n_size];   // array of attractor indicies
     int n_degree = 10;         // degree of polynomial
+    int max_color_val = 255;
 
     // create filename
     char degree[] = "2";
@@ -70,7 +81,7 @@ main(int argc, char* argv[])
 
     int r;
 
-    r = write_header(file_attr, n_size, 9);
+    r = write_header(file_attr, n_size, max_color_val);
 
     r = write_row(file_attr, attractor, n_size, n_degree);
 
