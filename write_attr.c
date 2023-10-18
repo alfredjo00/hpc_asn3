@@ -14,7 +14,7 @@ write_header(FILE *file, int n_size, int max_color_val){
 }
 
 int
-write_row(FILE *file, int* attractor, int n_size, int n_degree){
+write_attr(FILE *file, int* attractor, int n_size, int n_degree){
 
     int color_str_len = 12;
 
@@ -83,7 +83,7 @@ main(int argc, char* argv[])
 
     r = write_header(file_attr, n_size, max_color_val);
 
-    r = write_row(file_attr, attractor, n_size, n_degree);
+    r = write_attr(file_attr, attractor, n_size, n_degree);
 
     fclose(file_attr);
 
