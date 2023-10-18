@@ -195,7 +195,8 @@ int thrd_fun(void *args)
 			wix[3 * jx] 			= rgb_colors[3 * r_index]; 	// R
 			wix[3 * jx + 1] 	= rgb_colors[3 * r_index + 1]; // G
 			wix[3 * jx + 2] 	= rgb_colors[3 * r_index + 2]; // B
-			fix[jx] 					= MIN(iters * 255.0f/20.0f, 255.0f);
+			fix[jx] 					= MIN(iters * 255.0f/100.0f, 255.0f);
+			printf("%d\n", r_iter);
 		}
 
 		mtx_lock(mtx);
