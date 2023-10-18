@@ -3,15 +3,6 @@
 #include <string.h>
 #include <assert.h>
 #include <threads.h>
-#include <math.h>
-#include <errno.h>
-#include <limits.h>
-	
-
-#define SQ(x) ((x)*(x))
-#define CU(x) ((x)*(x)*(x))
-#define QD(x) ((x)*(x)*(x)*(x))
-#define QN(x) ((x)*(x)*(x)*(x)*(x))
 
 
 typedef struct {
@@ -25,7 +16,6 @@ typedef struct {
   int ib;
   int istep;
   int sz;
-	int d;
   int tx;
   mtx_t *mtx;
   cnd_t *cnd;
@@ -36,112 +26,12 @@ typedef struct {
   float **w;
 	int **f;
   int sz;
-	int d;
   int nthrds;
   mtx_t *mtx;
   cnd_t *cnd;
   int_padded *status;
 } thrd_info_check_t;
 
-
-static void poly_compute(float x, float y, float* z, int d)
-{
-	switch(d)
-	{
-		case 1:
-		{
-			z[0] = x - 1.0f;
-			z[1] = y - 1.0f;
-			break;
-		}
-		case 2:
-		{
-			float sq_x = SQ(x), sq_y = SQ(y);
-			z[0] = x * (sq_x + sq_y - 1.0f) / (2.0f * ( sq_x + sq_y));
-			z[1] = y * (sq_x + sq_y + 1.0f) / (2.0f * ( sq_x + sq_y));
-			break;
-		}
-		case 3:
-		{
-			float sq_x = SQ(x), sq_y = SQ(y);
-			float cu_x = CU(x), cu_y = CU(y);
-			float qd_x = QD(x), qd_y = QD(y);
-			float qn_x = QN(x);
-			
-			float c = 3.0f * SQ(sq_x + sq_y);
-			z[0] = (qn_x + 2.0f * cu_x * sq_y - sq_x + x * qd_y + sq_y) / c;
-			z[1] = y * (qd_x + 2.0f * sq_x * sq_y + 2.0f*x + qd_y) / c;
-			break;
-		}
-		case 4:
-		{
-			float sq_x = SQ(x), sq_y = SQ(y);
-			float cu_x = CU(x), cu_y = CU(y);
-			float qd_x = QD(x), qd_y = QD(y);
-			float qn_x = QN(x), qn_y = QN(y);
-			float he_x = SQ(cu_x), he_y = SQ(cu_y);
-			float sv_x = x*he_x, sv_y = y*he_y;
-			float c = 4.0f * CU(sq_x + sq_y);
-			z[0] =  sv_x + 3.0f*qn_x*sq_y + cu_x*(3.0f*qd_y - 1.0f) + x*sq_y*(qd_y + 3.0f);
-			z[1] = (he_x + 3.0f*qd_x*sq_y + 3.0f*sq_x*(qd_y + 1.0f) + sq_y*(qd_y - 1.0f)) * y / c;
-			break;
-		}
-		case 5:
-		{
-			float sq_x = SQ(x), sq_y = SQ(y);
-			float cu_x = CU(x), cu_y = CU(y);
-			float qd_x = QD(x), qd_y = QD(y);
-			float qn_x = QN(x), qn_y = QN(y);
-			float he_x = SQ(cu_x), he_y = SQ(cu_y);
-			float sv_x = x*he_x, sv_y = y*he_y;
-			
-			float c = 5.0f * QD(sq_x + sq_y);
-			z[0] = (sq_x*sv_x + 4.0f*sv_x*sq_y + 6.0f*qn_x*qd_y - qd_x + 4.0f*cu_x*he_y +\
-							6.0f*sq_x*sq_y + x*y*sv_y - qd_y)/c;
-							
-			z[1] = (x*sv_x + 4.0f*he_x*sq_y + 6.0f*qd_x*qd_y + 4.0f*cu_x + 4.0f*qd_x*he_y -\
-							4.0f*x*sq_y + y*sv_y) * y/c;
-			break;
-		}
-			
-		default:
-			fprintf(stderr, "unexpected degree\n");
-			exit(1);
-	}	
-}
-
-static int poly_iteration(float x, float y, int d)
-{
-	float roots_x[d];
-	float roots_y[d];
-	float pi = 3.141596536;
-	for (int r = 0; r < d; r++)
-	{
-		roots_x[r] = cos(r * 2.0f * pi/d);
-		roots_y[r] = sin(r * 2.0f * pi/d);	
-	}
-	float z[2];
-	float zr = x , zi = y;
-	float sq_norm, root_sq_norm;
-	for (int i = 0; i < 100; i++){
-		poly_compute(zr, zi, z, d);
-		zr += -z[0];
-		zi += -z[1];
-		
-		if (zr > 1e10 || zi > 1e10)
-			return i;
-		sq_norm = x*x + y*y;
-		
-		if (sq_norm < 1e-6)
-			return i;
-		
-		for (int j = 0; j < d; j++){
-			root_sq_norm = SQ(zr - roots_x[j]) + SQ(zi - roots_y[j]);
-			if (root_sq_norm < 1e-6)
-				return i;
-		}
-	}	
-}
 
 int thrd_fun(void *args)
 {
@@ -151,25 +41,21 @@ int thrd_fun(void *args)
   const int ib 				= thrd_info->ib;
   const int istep			= thrd_info->istep;
   const int sz 				= thrd_info->sz;
-  const int d 				= thrd_info->d;
   const int tx 				= thrd_info->tx;
   mtx_t *mtx 					= thrd_info->mtx;
   cnd_t *cnd 					= thrd_info->cnd;
   int_padded *status 	= thrd_info->status;
-	const float dxy   	= 4.0 /sz;
-	short iters;
+	
 	for ( int ix = ib; ix < sz; ix += istep ) {
 		// We allocate the rows of the result before computing, and free them in another thread.
 		float *wix 	= (float*) malloc(3*sz*sizeof(float));
 		int *fix 		= (int*) 	malloc(sz*sizeof(int));
-		float z[2];
-		
-		for ( int jx = 0; jx < sz; ++jx ){		
-			iters = poly_iteration(-2.0f + dxy*ix, 2.0f - dxy*jx, d);
+
+		for ( int jx = 0; jx < sz; ++jx ){			
 			wix[3 * jx] 			= jx % 20; 	// R
 			wix[3 * jx + 1] 	= jx % 100; // G
 			wix[3 * jx + 2] 	= jx % 200; // B
-			fix[jx] 					= iters;
+			fix[jx] 					= jx % 20;
 		}
 
 		mtx_lock(mtx);
@@ -190,7 +76,6 @@ int thrd_check_fun(void *args)
   float **w 					= thrd_info->w;
   int **f 						= thrd_info->f;
   const int sz 				= thrd_info->sz;
-  const int d 				= thrd_info->d;
   const int nthrds 		= thrd_info->nthrds;
   mtx_t *mtx 					= thrd_info->mtx;
   cnd_t *cnd 					= thrd_info->cnd;
@@ -230,27 +115,15 @@ int thrd_check_fun(void *args)
 
 
 int main(int argc, char *argv[]) {
-	int n_size = 0, n_threads = 0, n_d = 0;
+   int n_size = 0, n_threads = 0;
 
-	for (int i = 1; i < argc; i++) {		
-		if (strncmp(argv[i], "-l", 2) == 0) 
-			n_size = atoi(argv[i] + 2);
-
-		else if (strncmp(argv[i], "-t", 2) == 0) 
-			n_threads = atoi(argv[i] + 2);  
-	}
-	 
-	{
-		char *p;
-		errno = 0;
-		n_d = strtol(argv[argc - 1], &p, 10);		
+   for (int i = 1; i < argc; i++) {		
+      if (strncmp(argv[i], "-l", 2) == 0) 
+         n_size = atoi(argv[i] + 2);
 		
-		if (errno != 0 || *p != '\0' || n_d > INT_MAX || n_d < INT_MIN)
-			{
-				printf("error with args.\n");
-				exit(1);
-			}
-	}
+      else if (strncmp(argv[i], "-t", 2) == 0) 
+         n_threads = atoi(argv[i] + 2);      
+   }
 	
 	assert(n_size != 0 && n_threads != 0);	
 	
@@ -277,7 +150,6 @@ int main(int argc, char *argv[]) {
     thrds_info[tx].ib	 		= tx;
     thrds_info[tx].istep 	= n_threads;
     thrds_info[tx].sz 		= n_size;
-    thrds_info[tx].d 			= n_d;
     thrds_info[tx].tx 		= tx;
     thrds_info[tx].mtx 		= &mtx;
     thrds_info[tx].cnd 		= &cnd;
@@ -296,7 +168,6 @@ int main(int argc, char *argv[]) {
     thrd_info_check.w 			= w;
     thrd_info_check.f 			= f;
     thrd_info_check.sz 			= n_size;
-    thrd_info_check.d 			= n_d;
     thrd_info_check.nthrds 	= n_threads;
     thrd_info_check.mtx 		= &mtx;
     thrd_info_check.cnd 		= &cnd;
