@@ -13,6 +13,9 @@
 #define QD(x) ((x)*(x)*(x)*(x))
 #define QN(x) ((x)*(x)*(x)*(x)*(x))
 
+#define MIN(a,b) ({ __typeof__ (a) _a = (a); \
+										__typeof__ (b) _b = (b); \
+										_a < _b ? _a : _b; })
 
 typedef struct {
   int val;
@@ -110,11 +113,12 @@ static void poly_compute(float x, float y, float* z, int d)
 	}	
 }
 
-static int poly_iteration(float x, float y, int d)
+static void poly_iteration(float x, float y, int *ret, int d)
 {
 	float roots_x[d];
 	float roots_y[d];
 	float pi = 3.141596536;
+	const int max_iters = 100;
 	for (int r = 0; r < d; r++)
 	{
 		roots_x[r] = cos(r * 2.0f * pi/d);
@@ -123,28 +127,45 @@ static int poly_iteration(float x, float y, int d)
 	float z[2];
 	float zr = x , zi = y;
 	float sq_norm, root_sq_norm;
-	for (int i = 0; i < 100; i++){
+	for (int i = 0; i < max_iters; i++){
 		poly_compute(zr, zi, z, d);
 		zr += -z[0];
 		zi += -z[1];
 		
-		if (zr > 1e10 || zi > 1e10)
-			return i;
-		sq_norm = x*x + y*y;
+		if (fabs(zr) > 1e10 || fabs(zi) > 1e10){
+			ret[0] = 0;
+			ret[1] = i;
+			break;
+		}
+		sq_norm = zr*zr + zi*zi;
 		
-		if (sq_norm < 1e-6)
-			return i;
+		if (sq_norm < 1e-6){
+			ret[0] = 0;
+			ret[1] = i;
+			break;
+		}
 		
 		for (int j = 0; j < d; j++){
 			root_sq_norm = SQ(zr - roots_x[j]) + SQ(zi - roots_y[j]);
-			if (root_sq_norm < 1e-6)
-				return i;
+			if (root_sq_norm < 1e-6){
+				ret[0] = j+1;
+				ret[1] = i;
+				i = max_iters;
+				break;
+			}
 		}
 	}	
 }
 
 int thrd_fun(void *args)
 {
+	const float rgb_colors[33] = {255., 255., 255.,
+																0., 0., 255., 		255., 255., 0,\
+																255., 0., 255., 	0., 128., 128.,\
+																51.f, 153., 102, 	204., 250., 180.,\
+																153., 51., 0., 		120., 30., 200.,\
+																255., 0., 0.,			255., 255., 200.};
+																
   const thrd_info_t *thrd_info = (thrd_info_t*) args;
   float **w 					= thrd_info->w;
   int **f 						= thrd_info->f;
@@ -157,19 +178,24 @@ int thrd_fun(void *args)
   cnd_t *cnd 					= thrd_info->cnd;
   int_padded *status 	= thrd_info->status;
 	const float dxy   	= 4.0 /sz;
+	float x, y;
+	int root[2], r_iter, r_index;
 	short iters;
 	for ( int ix = ib; ix < sz; ix += istep ) {
 		// We allocate the rows of the result before computing, and free them in another thread.
 		float *wix 	= (float*) malloc(3*sz*sizeof(float));
 		int *fix 		= (int*) 	malloc(sz*sizeof(int));
-		float z[2];
 		
 		for ( int jx = 0; jx < sz; ++jx ){		
-			iters = poly_iteration(-2.0f + dxy*ix, 2.0f - dxy*jx, d);
-			wix[3 * jx] 			= jx % 20; 	// R
-			wix[3 * jx + 1] 	= jx % 100; // G
-			wix[3 * jx + 2] 	= jx % 200; // B
-			fix[jx] 					= iters;
+			x = -2.0f + dxy*ix;
+			y =  2.0f - dxy*jx;
+			poly_iteration(x, y, root, d);
+			r_index = root[0];	
+			r_iter 	= root[1];
+			wix[3 * jx] 			= rgb_colors[3 * r_index]; 	// R
+			wix[3 * jx + 1] 	= rgb_colors[3 * r_index + 1]; // G
+			wix[3 * jx + 2] 	= rgb_colors[3 * r_index + 2]; // B
+			fix[jx] 					= MIN(iters * 255.0f/20.0f, 255.0f);
 		}
 
 		mtx_lock(mtx);
