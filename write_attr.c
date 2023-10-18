@@ -30,7 +30,7 @@ write_attr(FILE *file, int* attractor, int n_size, int n_degree){
     char c_8[] = "100 150 250\n";
     char c_9[] = "250 150 100\n";
 
-    char colors[120]; // = (char*) malloc(120*sizeof(char));
+    char colors[140]; // = (char*) malloc(120*sizeof(char));
     sprintf(colors, "%s%s%s%s%s%s%s%s%s%s", c_0, c_1, c_2, c_3, c_4, c_5, c_6, c_7, c_8, c_9);
     // printf("%s", colors);
 
@@ -39,7 +39,6 @@ write_attr(FILE *file, int* attractor, int n_size, int n_degree){
     for ( size_t ix = 0, jx = 0; jx < n_size; ix += color_str_len, ++jx ){
         memcpy( row_str + ix, colors + attractor[jx]*color_str_len, color_str_len);
     }
-    row_str[n_size*color_str_len] = 0; // null termination
     
     fwrite( row_str, sizeof(char), n_size*color_str_len, file);
     free(row_str);
@@ -54,10 +53,9 @@ main(int argc, char* argv[])
     srand(time(NULL));
 
     // initialize working variables
-    int n_size = 1000;       // length of row, n.o. pixels in row
-    // int str_len = 6;    // length of color string
-    int *attractor = (int*) malloc(n_size*sizeof(int)); // [n_size];   // array of attractor indicies
-    int n_degree = 10;         // degree of polynomial
+    int n_size = 1000;                                      // length of row, n.o. pixels in row
+    int *attractor = (int*) malloc(n_size*sizeof(int));
+    int n_degree = 10;                                      // degree of polynomial
     int max_color_val = 255;
 
     // create filename
@@ -86,7 +84,7 @@ main(int argc, char* argv[])
     r = write_attr(file_attr, attractor, n_size, n_degree);
 
     fclose(file_attr);
-
+    free(attractor);
     return 0;
 
 }
