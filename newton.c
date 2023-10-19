@@ -148,7 +148,7 @@ static void poly_compute(float x, float y, float* z, int d)
 		case 1:
 		{
 			z[0] = x - 1.0f;
-			z[1] = y - 1.0f;
+			z[1] = y; // - 1.0f;
 			break;
 		}
 		case 2:
