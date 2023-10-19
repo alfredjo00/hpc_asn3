@@ -46,6 +46,100 @@ typedef struct {
   int_padded *status;
 } thrd_info_check_t;
 
+typedef struct {
+  int **w;
+	int **f;
+  int max_col_val;
+  FILE *file_conv;
+  FILE *file_attr;
+  int ib;
+  int istep;
+  int sz;
+	int d;
+  int tx;
+  mtx_t *mtx;
+  cnd_t *cnd;
+  int_padded *status;
+} thrd_wr_info_t;
+
+static void
+write_header(FILE *file, int n_size, int max_color_val){
+    fprintf(file, "%s\n%i %i\n%i\n", "P3", n_size, n_size, max_color_val);
+}
+
+static void
+write_conv(FILE *file, int* convergence, int n_size)
+{
+  int color_str_len = 20;
+  int row_str_len_sum = 0;
+  int offset = 0;
+  char *row_str = (char*) malloc(n_size*color_str_len*sizeof(char));
+  char colors[10000];
+  colors[0] = '\0';
+
+  // create colormap for greyvalues
+  for (int ix = 0; ix <= 254; ix += 2) {
+      char line[14];
+      snprintf(line, sizeof(line), "%i %i %i\n", ix, ix, ix);
+      strcat(colors, line);
+  }
+
+  // memcpy color strings to row_str
+  for ( int ix = 0, jx = 0; jx < n_size; ix += color_str_len, ++jx ){
+    assert( 1 <= convergence[jx] && convergence[jx] <= 128 );
+      if ( convergence[jx] <= 5 ){
+          color_str_len = 6;
+          row_str_len_sum += color_str_len;
+          offset = 0;
+      }
+      else if ( convergence[jx] <= 50 ){
+          color_str_len = 9;
+          row_str_len_sum += color_str_len;
+          offset = -3*5;
+      }
+      else {
+          color_str_len = 12;
+          row_str_len_sum += color_str_len;
+          offset = -6*5 - 3*45;
+      }
+      memcpy( row_str + ix, colors + offset + color_str_len*(convergence[jx]-1), color_str_len);
+  }
+
+  fwrite( row_str, sizeof(char), row_str_len_sum, file);
+  free(row_str);
+  free(convergence);
+}
+
+static void
+write_attr(FILE *file, int* attractor, int n_size, int n_degree)
+{
+    int color_str_len = 12;
+
+    // color map
+    char c_0[] = "100 100 100\n";
+    char c_1[] = "100 100 255\n";
+    char c_2[] = "100 255 100\n";
+    char c_3[] = "100 255 255\n";
+    char c_4[] = "255 100 100\n";
+    char c_5[] = "255 100 255\n";
+    char c_6[] = "255 255 100\n";
+    char c_7[] = "255 255 255\n";
+    char c_8[] = "100 150 250\n";
+    char c_9[] = "250 150 100\n";
+
+    char colors[140];
+    sprintf(colors, "%s%s%s%s%s%s%s%s%s%s", c_0, c_1, c_2, c_3, c_4, c_5, c_6, c_7, c_8, c_9);
+
+    char *row_str = (char*) malloc(n_size*color_str_len*sizeof(char));
+
+    for ( size_t ix = 0, jx = 0; jx < n_size; ix += color_str_len, ++jx ){
+      assert( attractor[jx] <= 9 && attractor[jx] >= 0);
+      memcpy( row_str + ix, colors + attractor[jx]*color_str_len, color_str_len);        
+    }
+    
+    fwrite( row_str, sizeof(char), n_size*color_str_len, file);
+    free(row_str);
+}
 
 static void poly_compute(float x, float y, float* z, int d)
 {
@@ -157,6 +251,37 @@ static void poly_iteration(float x, float y, int *ret, int d)
 	}	
 }
 
+int thrd_write(void *args)
+{
+  const thrd_wr_info_t *thrd_wr_info = (thrd_wr_info_t*) args;
+  int **w 					  = thrd_wr_info->w;
+  int **f 						= thrd_wr_info->f;
+  int max_col_val 	  = thrd_wr_info->max_col_val;
+  FILE *file_conv     = thrd_wr_info->file_conv;
+  FILE *file_attr     = thrd_wr_info->file_attr;
+  const int ib 				= thrd_wr_info->ib;
+  const int istep			= thrd_wr_info->istep;
+  const int sz 				= thrd_wr_info->sz;
+  const int d 				= thrd_wr_info->d;
+  const int tx 				= thrd_wr_info->tx;
+  mtx_t *mtx 					= thrd_wr_info->mtx;
+  cnd_t *cnd 					= thrd_wr_info->cnd;
+  int_padded *status 	= thrd_wr_info->status;
+
+  write_header(file_conv, sz, max_col_val);
+  write_header(file_attr, sz, max_col_val);
+
+  for ( int ix = 0; ix < sz; ++ix ){
+    write_conv(file_conv, f[ix], sz);
+  }
+
+  for ( int ix = 0; ix < sz; ++ix ){
+    write_attr(file_attr, w[ix], sz, d);
+  }
+  
+  return 0;
+}
+
 int thrd_fun(void *args)
 {
 	const float rgb_colors[33] = {255., 255., 255.,
@@ -248,7 +373,7 @@ int thrd_check_fun(void *args)
     for ( ; ix < ibnd; ++ix ) {
       // We free the component of w, since it will never be used again.
       free(w[ix]);
-      free(f[ix]);
+      // free(f[ix]);
     }
   }
 
@@ -287,6 +412,9 @@ int main(int argc, char *argv[]) {
   thrd_t thrds[n_threads];
   thrd_info_t thrds_info[n_threads];
 
+  thrd_t thrd_wr;
+  thrd_wr_info_t thrd_wr_info;
+
   thrd_t thrd_check;
   thrd_info_check_t thrd_info_check;
   
@@ -297,6 +425,7 @@ int main(int argc, char *argv[]) {
   cnd_init(&cnd);
 
   int_padded status[n_threads];
+  int_padded status_wr;
 
 	for ( int tx = 0; tx < n_threads; ++tx ) {
     thrds_info[tx].w 			= w;
@@ -343,9 +472,76 @@ int main(int argc, char *argv[]) {
     thrd_join(thrd_check, &r);
   }
 
-	// Write to ppm files
+	int max_color_val = 255;
+
+  // create filename
+  char f_name_conv[] = "newton_convergence_x";
+  char f_name_attr[] = "newton_attractors_x";
+  strcat(f_name_conv, argv[argc - 1]);
+  strcat(f_name_conv, ".ppm");
+  strcat(f_name_attr, argv[argc - 1]);
+  strcat(f_name_attr, ".ppm");
+  //
+
+  // open file
+  FILE *file_conv = fopen( f_name_conv, "w" );
+  if (file_conv == NULL){
+      printf("Error opening file\n");
+      return -1;
+  }
+  FILE *file_attr = fopen( f_name_attr, "w" );
+  if (file_attr == NULL){
+      printf("Error opening file\n");
+      return -1;
+  }
+
+  // create temporary attractors
+  int **attractors  = (int**) malloc(n_size*sizeof(int*));
+  int *attractor    = (int*) malloc(n_size*n_size*sizeof(int));
+
+  for ( int ix = 0; ix < n_size*n_size; ++ix)
+    attractor[ix] = (int) rand() % 10;
+
+  for ( int ix = 0; ix < n_size; ++ix)
+    attractors[ix] = attractor + n_size*ix;
+  
+  {
+  thrd_wr_info.w 			      = attractors;
+  thrd_wr_info.f 			      = f;
+  thrd_wr_info.max_col_val  = 255;
+  thrd_wr_info.file_conv    = file_conv;
+  thrd_wr_info.file_attr    = file_attr;
+  thrd_wr_info.ib	 		      = 0;
+  thrd_wr_info.istep 	      = n_threads;
+  thrd_wr_info.sz 		      = n_size;
+  thrd_wr_info.d 			      = n_d;
+  thrd_wr_info.tx 		      = 0;
+  thrd_wr_info.mtx 		      = &mtx;
+  thrd_wr_info.cnd 		      = &cnd;
+  thrd_wr_info.status       = status;
+  status_wr.val 	          = 0;
+
+  int r = thrd_create(&thrd_wr, thrd_write, (void*) (&thrd_wr_info));
+    if ( r != thrd_success ) {
+      fprintf(stderr, "failed to create thread\n");
+      exit(1);
+    }
+  }
+
+  {
+    int r;
+    thrd_join(thrd_wr, &r);
+  }
+
+  
+  free(attractor);
+  free(attractors);
+
+  fclose(file_attr);
+  fclose(file_conv);
 
   free(w);
+  free(f);
 
   mtx_destroy(&mtx);
   cnd_destroy(&cnd);
