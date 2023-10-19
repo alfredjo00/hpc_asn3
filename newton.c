@@ -148,7 +148,7 @@ static void poly_compute(float x, float y, float* z, int d)
 		case 1:
 		{
 			z[0] = x - 1.0f;
-			z[1] = y; // - 1.0f;
+			z[1] = y;
 			break;
 		}
 		case 2:
@@ -209,6 +209,108 @@ static void poly_compute(float x, float y, float* z, int d)
 			break;
 		}
 			
+		case 6:
+		{
+			float sq_x = SQ(x), 		sq_y = SQ(y);
+			float cu_x = x*sq_x, 		cu_y = y*sq_y;
+			float qd_x = x*cu_x, 		qd_y = y*cu_y;
+			float qn_x = x*qd_x,		qn_y = y*qd_y;
+			float he_x = x*qn_x,		he_y = y*qn_y;
+			float sv_x = x*he_x,		sv_y = y*he_y;
+			float oc_x = x*sv_x,		oc_y = y*sv_y;
+			float tn_x = sq_x*oc_x, tn_y = sq_y*oc_y;
+			
+			
+			float c = 6.0f*tn_x + 6.0f*tn_y + 30.0f*oc_x*sq_y + 30.0f*oc_y*sq_x + 60.0f*he_x*qd_y + 60.0f*he_y*qd_x;
+			float a = tn_x + 5.*oc_x*sq_y + 10.*he_x*qd_y + 5.*sq_x*oc_y;
+			
+			z[0] = x*a + qn_x*(10.0f*he_y-1.0f) + 10.0f*cu_x*sq_y + x*tn_y - 5.0f*x*qd_y;
+			z[0] = z[0]/c;
+
+			z[1] = y*(a + 5.0f*qd_x + 10.0f*qd_x*he_y - 10*sq_x*sq_y + tn_y + qd_y);
+			z[1] = z[1]/c;
+			break;
+		}
+			
+		case 7:
+		{
+			float sq_x = SQ(x), 		sq_y = SQ(y);
+			float cu_x = x*sq_x, 		cu_y = y*sq_y;
+			float qd_x = x*cu_x, 		qd_y = y*cu_y;
+			float qn_x = x*qd_x,		qn_y = y*qd_y;
+			float he_x = x*qn_x,		he_y = y*qn_y;
+			float sv_x = x*he_x,		sv_y = y*he_y;
+			float oc_x = x*sv_x,		oc_y = y*sv_y;
+			float tn_x = sq_x*oc_x, tn_y = sq_y*oc_y;
+			float tw_x = sq_x*tn_x, tw_y = sq_y*tn_y;
+			
+			
+			float c = 7.0f*(tw_x + tw_y) + 42.0f*(tn_x*sq_y + tn_y*sq_x) +\
+								105.0f*(oc_x*qd_y + oc_y*qd_x) + 140.0f*he_x*he_y;
+								
+			float a = tw_x + 6.0f*tn_x*sq_y + 6.0f*sq_x*tn_y + 15.0f*oc_x*qd_y + 15.0f*qd_x*oc_y +\
+								tw_y + 20.0f*he_x*he_y;
+			
+			z[0] = x*a - he_x + 15.0f*(qd_x*sq_y - sq_x*qd_y) + he_y;
+			z[0] = z[0]/c;
+				
+			z[1] = y*a + 6.0f*(x*qn_y + y*qn_x) - 20.0f*cu_x*cu_y;
+			z[1] = z[1]/c;
+			break;
+		}		
+				
+		case 8:
+		{
+			float sq_x = SQ(x), 		sq_y = SQ(y);
+			float cu_x = x*sq_x, 		cu_y = y*sq_y;
+			float qd_x = x*cu_x, 		qd_y = y*cu_y;
+			float qn_x = x*qd_x,		qn_y = y*qd_y;
+			float he_x = x*qn_x,		he_y = y*qn_y;
+			float sv_x = x*he_x,		sv_y = y*he_y;
+			float oc_x = x*sv_x,		oc_y = y*sv_y;
+			float tn_x = sq_x*oc_x, tn_y = sq_y*oc_y;
+			float tw_x = sq_x*tn_x, tw_y = sq_y*tn_y;
+			float ft_x = sq_x*tw_x, ft_y = sq_y*tw_y;
+			
+			float c = 8.0f*(ft_x + ft_y) + 56.0f*(tw_x*sq_y + tw_y*sq_x) +\
+								168.0f*(tn_x*qd_y + tn_y*qd_x) + 280.0f*(oc_x*he_y + oc_y*he_x);
+								
+			float a = ft_y + ft_x + 7.0f*(sq_x*tw_y + tw_x*sq_y) + 21.0f*(qd_x*tn_y + tn_x*qd_y) +\
+								35.0f*(oc_x*he_y + oc_y*he_x);			
+						
+			z[0] = x*a - sv_x - 35.0f*cu_x*qd_y + 21.0f*qn_x*sq_y + 7.0f*x*he_y;
+			z[0] = z[0]/c;
+
+			z[1] = y*a - sv_y - 35.0f*qd_x*cu_y + 21.0f*sq_x*qn_y + 7.0f*he_x*y;
+			z[1] = z[1]/c;
+			break;
+		}				
+
+		case 9:
+		{
+			float sq_x = SQ(x), 		sq_y = SQ(y);
+			float cu_x = x*sq_x, 		cu_y = y*sq_y;
+			float qd_x = x*cu_x, 		qd_y = y*cu_y;
+			float qn_x = x*qd_x,		qn_y = y*qd_y;
+			float he_x = x*qn_x,		he_y = y*qn_y;
+			float sv_x = x*he_x,		sv_y = y*he_y;
+			float oc_x = x*sv_x,		oc_y = y*sv_y;
+			float tn_x = sq_x*oc_x, tn_y = sq_y*oc_y;
+			float tw_x = sq_x*tn_x, tw_y = sq_y*tn_y;
+			float ft_x = sq_x*tw_x, ft_y = sq_y*tw_y;
+			float sx_x = sq_x*ft_x, sx_y = sq_y*ft_y;			
+			
+			float c = 9.0f*(sx_x + sx_y) + 72.0f*(ft_x*sq_y + ft_y*sq_x) + 252.0f*(tw_x*qd_y + tw_y*qd_x) + 504.0f*(tn_x*he_y + tn_y*he_x) + 630.0f*oc_x*oc_y;
+			float a = sx_x + sx_y + 8.0f*(ft_x*sq_y + ft_y*sq_x) + 28.0f*(tw_x*qd_y + tw_y*qd_x) + 56.0f*(tn_x*he_y + tn_y*he_x) + 70.0f*oc_x*oc_y;
+			
+			z[0] = x*a - oc_x - oc_y + 28.0f*(sq_x*he_y + sq_y*he_x) - 70.0f*qd_x*qd_y;
+			z[0] = z[0]/c;
+
+			z[1] = y*a - 8.0f*(x*sv_y - y*sv_x) - 56.0f*(qn_x*cu_y - qn_y*cu_x);
+			z[1] = z[1]/c;
+			break;
+		}		
+		
 		default:
 			fprintf(stderr, "unexpected degree\n");
 			exit(1);
