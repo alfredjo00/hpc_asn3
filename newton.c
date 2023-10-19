@@ -10,8 +10,8 @@
 #define SQ(x) ((x)*(x))
 
 #define MIN(a,b) ({ __typeof__ (a) _a = (a); \
-										__typeof__ (b) _b = (b); \
-										_a < _b ? _a : _b; })
+					__typeof__ (b) _b = (b); \
+								_a < _b ? _a : _b; })
 
 typedef struct {
   int val;
@@ -19,47 +19,31 @@ typedef struct {
 } int_padded;
 
 typedef struct {
-  int **w;
-	int **f;
-  int ib;
-  int istep;
-  int sz;
+	int **attractors;
+	int **convergences;
+	int ib;
+	int istep;
+	int sz;
 	int d;
-  int tx;
-  mtx_t *mtx;
-  cnd_t *cnd;
-  int_padded *status;
+	int tx;
+	mtx_t *mtx;
+	cnd_t *cnd;
+	int_padded *status;
 } thrd_info_t;
 
 typedef struct {
-  int **w;
-	int **f;
-  int max_col_val;
-  FILE *file_conv;
-  FILE *file_attr;
-  int sz;
+  	int **attractors;
+	int **convergences;
+  	int max_col_val;
+  	FILE *file_conv;
+  	FILE *file_attr;
+  	int sz;
 	int d;
-  int nthrds;
-  mtx_t *mtx;
-  cnd_t *cnd;
-  int_padded *status;
+  	int nthrds;
+  	mtx_t *mtx;
+  	cnd_t *cnd;
+  	int_padded *status;
 } thrd_info_check_t;
-
-typedef struct {
-  int **w;
-	int **f;
-  int max_col_val;
-  FILE *file_conv;
-  FILE *file_attr;
-  int ib;
-  int istep;
-  int sz;
-	int d;
-  int tx;
-  mtx_t *mtx;
-  cnd_t *cnd;
-  int_padded *status;
-} thrd_wr_info_t;
 
 static void
 write_header(FILE *file, int n_size, int max_color_val){
@@ -72,20 +56,9 @@ write_conv(FILE *file, int* convergence, int n_size, char colors[], char *row_st
   int color_str_len = 20;
   int row_str_len_sum = 0;
   int offset = 0;
-  // char *row_str = (char*) malloc(n_size*color_str_len*sizeof(char));
-  // char colors[10000];
-  // colors[0] = '\0';
-
-  // // create colormap for greyvalues
-  // for (int ix = 0; ix <= 254; ix += 2) {
-  //     char line[14];
-  //     snprintf(line, sizeof(line), "%i %i %i\n", ix, ix, ix);
-  //     strcat(colors, line);
-  // }
 
   // memcpy color strings to row_str
   for ( int ix = 0, jx = 0; jx < n_size; ix += color_str_len, ++jx ){
-    // printf("convergence[%i] = %i\n", jx, convergence[jx]);
     assert( 1 <= convergence[jx] && convergence[jx] <= 128 );
       if ( convergence[jx] <= 5 ){
           color_str_len = 6;
@@ -104,9 +77,7 @@ write_conv(FILE *file, int* convergence, int n_size, char colors[], char *row_st
       }
       memcpy( row_str + ix, colors + offset + color_str_len*(convergence[jx]-1), color_str_len);
   }
-
   fwrite(row_str, sizeof(char), row_str_len_sum, file);
-  // free(row_str);
 }
 
 static void
@@ -114,31 +85,11 @@ write_attr(FILE *file, int* attractor, int n_size, int n_degree, char colors[], 
 {
     int color_str_len = 12;
 
-    // color map
-    // char c_0[] = "100 100 100\n";
-    // char c_1[] = "100 100 255\n";
-    // char c_2[] = "100 255 100\n";
-    // char c_3[] = "100 255 255\n";
-    // char c_4[] = "255 100 100\n";
-    // char c_5[] = "255 100 255\n";
-    // char c_6[] = "255 255 100\n";
-    // char c_7[] = "255 255 255\n";
-    // char c_8[] = "100 150 250\n";
-    // char c_9[] = "250 150 100\n";
-    // char c_10[] = "100 255 200\n";
-
-    // char colors[140] = "100 100 100\n100 100 255\n100 255 100\n100 255 255\n255 100 100\n255 100 255\n255 255 100\n255 255 255\n100 150 250\n250 150 100\n100 255 200\n";
-    // sprintf(colors, "%s%s%s%s%s%s%s%s%s%s%s", c_0, c_1, c_2, c_3, c_4, c_5, c_6, c_7, c_8, c_9, c_10);
-
-    // char *row_str = (char*) malloc(n_size*color_str_len*sizeof(char));
-
     for ( size_t ix = 0, jx = 0; jx < n_size; ix += color_str_len, ++jx ){
-      assert( attractor[jx] <= 10 && attractor[jx] >= 0);
-      memcpy( row_str + ix, colors + attractor[jx]*color_str_len, color_str_len);        
+      	assert( attractor[jx] <= 10 && attractor[jx] >= 0);
+      	memcpy( row_str + ix, colors + attractor[jx]*color_str_len, color_str_len);        
     }
-    
     fwrite( row_str, sizeof(char), n_size*color_str_len, file);
-    // free(row_str);
 }
 
 static void poly_compute(float x, float y, float* z, int d)
@@ -323,7 +274,7 @@ static void poly_iteration(float x, float y, int *ret, float* roots, int d)
 	float z[2];
 	float zr = x , zi = y;
 	float sq_norm, root_sq_norm;
-  int i;
+  	int i;
 	ret[0] = 0; ret[1] = max_iters;
 	for ( i = 0; i < max_iters; i++){
 		poly_compute(zr, zi, z, d);
@@ -358,17 +309,17 @@ static void poly_iteration(float x, float y, int *ret, float* roots, int d)
 
 int thrd_fun(void *args)
 {															
-  const thrd_info_t *thrd_info = (thrd_info_t*) args;
-  int **w 						= thrd_info->w;
-  int **f 						= thrd_info->f;
-  const int ib 				= thrd_info->ib;
-  const int istep			= thrd_info->istep;
-  const int sz 				= thrd_info->sz;
-  const int d 				= thrd_info->d;
-  const int tx 				= thrd_info->tx;
-  mtx_t *mtx 					= thrd_info->mtx;
-  cnd_t *cnd 					= thrd_info->cnd;
-  int_padded *status 	= thrd_info->status;
+  	const thrd_info_t *thrd_info = (thrd_info_t*) args;
+  	int **attractors 	= thrd_info->attractors;
+  	int **convergences 	= thrd_info->convergences;
+  	const int ib 		= thrd_info->ib;
+  	const int istep		= thrd_info->istep;
+  	const int sz 		= thrd_info->sz;
+  	const int d 		= thrd_info->d;
+  	const int tx 		= thrd_info->tx;
+  	mtx_t *mtx 			= thrd_info->mtx;
+  	cnd_t *cnd 			= thrd_info->cnd;
+  	int_padded *status 	= thrd_info->status;
 	const float dxy   	= 4.0 /sz;
 	float x, y;
 	int root[2], r_iter, r_index;
@@ -379,14 +330,14 @@ int thrd_fun(void *args)
 	
 	for (int r = 0; r < d; r++)
 	{
-		roots[2*r] 			= cos(r * 2.0f * pi/d);
+		roots[2*r] 		= cos(r * 2.0f * pi/d);
 		roots[2*r + 1] 	= sin(r * 2.0f * pi/d);	
 	}
 	
 	for ( int ix = ib; ix < sz; ix += istep ) {
 		// We allocate the rows of the result before computing, and free them in another thread.
-		int *wix 	= (int*) malloc(sz*sizeof(int));
-		int *fix 	= (int*) 	malloc(sz*sizeof(int));
+		int *attr_ix 	= (int*) malloc(sz*sizeof(int));
+		int *conv_ix 	= (int*) malloc(sz*sizeof(int));
 		
 		for ( int jx = 0; jx < sz; ++jx ){		
 			x = -2.0f + dxy*ix;
@@ -394,13 +345,13 @@ int thrd_fun(void *args)
 			poly_iteration(x, y, root, roots, d);
 			r_index = root[0];	
 			r_iter 	= root[1];
-			wix[jx] = r_index; 	// R
-			fix[jx] = r_iter; // = MIN(iters * 255.0f/100.0f, 255.0f);			
+			attr_ix[jx] = r_index;
+			conv_ix[jx] = r_iter;
 		}
 
 		mtx_lock(mtx);
-		w[ix] = wix; // array of RGB
-		f[ix] = fix; // array of iterations done
+		attractors[ix] 		= attr_ix; // array of RGB
+		convergences[ix] 	= conv_ix; // array of iterations done
     status[tx].val = ix + istep;
     mtx_unlock(mtx);
     cnd_signal(cnd);
@@ -413,19 +364,19 @@ int thrd_fun(void *args)
 int thrd_check_fun(void *args)
 {
   const thrd_info_check_t *thrd_info = (thrd_info_check_t*) args;
-  int **w 						= thrd_info->w;
-  int **f 						= thrd_info->f;
-  int max_col_val 	  = thrd_info->max_col_val;
-  FILE *file_conv     = thrd_info->file_conv;
-  FILE *file_attr     = thrd_info->file_attr;
-  const int sz 				= thrd_info->sz;
-  const int d 				= thrd_info->d;
+  int **attractors 		= thrd_info->attractors;
+  int **convergences 	= thrd_info->convergences;
+  int max_col_val 	  	= thrd_info->max_col_val;
+  FILE *file_conv     	= thrd_info->file_conv;
+  FILE *file_attr     	= thrd_info->file_attr;
+  const int sz 			= thrd_info->sz;
+  const int d 			= thrd_info->d;
   const int nthrds 		= thrd_info->nthrds;
-  mtx_t *mtx 					= thrd_info->mtx;
-  cnd_t *cnd 					= thrd_info->cnd;
+  mtx_t *mtx 			= thrd_info->mtx;
+  cnd_t *cnd 			= thrd_info->cnd;
   int_padded *status 	= thrd_info->status;
 
-  // create colormaps
+  // create colormaps //
   char clrs_grey[10000];
   clrs_grey[0] = '\0';
   // greyvalues
@@ -465,13 +416,10 @@ int thrd_check_fun(void *args)
 
     // We do not initialize ix in this loop, but in the outer one.
     for ( ; ix < ibnd; ++ix ) {
-      // We free the component of w, since it will never be used again.
-			// write here
-			write_conv(file_conv, f[ix], sz, clrs_grey, row_str);
-			write_attr(file_attr, w[ix], sz, d, clrs_rgb, row_str);
-			
-      free(w[ix]);
-      free(f[ix]);
+		write_conv(file_conv, convergences[ix], sz, clrs_grey, row_str);
+		write_attr(file_attr, attractors[ix], sz, d, clrs_rgb, row_str);
+		free(attractors[ix]);
+      	free(convergences[ix]);
     }
     free(row_str);
   }
@@ -504,83 +452,80 @@ int main(int argc, char *argv[]) {
 	
 	int max_color_val = 255;
 
-  // create filename
-  char f_name_conv[35] = "newton_convergence_x";
-  char f_name_attr[35] = "newton_attractors_x";
-  strcat(f_name_conv, argv[argc - 1]);
-  strcat(f_name_conv, ".ppm");
-  strcat(f_name_attr, argv[argc - 1]);
-  strcat(f_name_attr, ".ppm");
-  //
+	// create filenames
+	char f_name_conv[35] = "newton_convergence_x";
+	char f_name_attr[35] = "newton_attractors_x";
+	strcat(f_name_conv, argv[argc - 1]);
+	strcat(f_name_conv, ".ppm");
+	strcat(f_name_attr, argv[argc - 1]);
+	strcat(f_name_attr, ".ppm");
+	//
 
-  // open file
-  FILE *file_conv = fopen( f_name_conv, "w" );
-  if (file_conv == NULL){
-      printf("Error opening file\n");
-      return -1;
-  }
-  FILE *file_attr = fopen( f_name_attr, "w" );
-  if (file_attr == NULL){
-      printf("Error opening file\n");
-      return -1;
-  }
+	// open files
+	FILE *file_conv = fopen( f_name_conv, "w" );
+	if (file_conv == NULL){
+		printf("Error opening file\n");
+		return -1;
+	}
+	FILE *file_attr = fopen( f_name_attr, "w" );
+	if (file_attr == NULL){
+		printf("Error opening file\n");
+		return -1;
+	}
 	
 	assert(n_size != 0 && n_threads != 0);	
 	
-	int **w = (int**) malloc(n_size*sizeof(int*));
-	int **f = (int**) malloc(n_size*sizeof(int*));
+	int **attractors 	= (int**) malloc(n_size*sizeof(int*));
+	int **convergences 	= (int**) malloc(n_size*sizeof(int*));
 
-  thrd_t thrds[n_threads];
-  thrd_info_t thrds_info[n_threads];
+	thrd_t thrds[n_threads];
+	thrd_info_t thrds_info[n_threads];
 
-  thrd_t thrd_wr;
-  thrd_wr_info_t thrd_wr_info;
+	thrd_t thrd_check;
+	thrd_info_check_t thrd_info_check;
+	
+	mtx_t mtx;
+	mtx_init(&mtx, mtx_plain);
 
-  thrd_t thrd_check;
-  thrd_info_check_t thrd_info_check;
-  
-  mtx_t mtx;
-  mtx_init(&mtx, mtx_plain);
+	cnd_t cnd;
+	cnd_init(&cnd);
 
-  cnd_t cnd;
-  cnd_init(&cnd);
-
-  int_padded status[n_threads];
-  int_padded status_wr;
+	int_padded status[n_threads];
+	int_padded status_wr;
 
 	for ( int tx = 0; tx < n_threads; ++tx ) {
-    thrds_info[tx].w 			= w;
-    thrds_info[tx].f 			= f;
-    thrds_info[tx].ib	 		= tx;
-    thrds_info[tx].istep 	= n_threads;
-    thrds_info[tx].sz 		= n_size;
-    thrds_info[tx].d 			= n_d;
-    thrds_info[tx].tx 		= tx;
-    thrds_info[tx].mtx 		= &mtx;
-    thrds_info[tx].cnd 		= &cnd;
-    thrds_info[tx].status = status;
-    status[tx].val 				= 0;
+		thrds_info[tx].attractors 	= attractors;
+		thrds_info[tx].convergences	= convergences;
+		thrds_info[tx].ib	 		= tx;
+		thrds_info[tx].istep 		= n_threads;
+		thrds_info[tx].sz 			= n_size;
+		thrds_info[tx].d 			= n_d;
+		thrds_info[tx].tx 			= tx;
+		thrds_info[tx].mtx 			= &mtx;
+		thrds_info[tx].cnd 			= &cnd;
+		thrds_info[tx].status 		= status;
+		status[tx].val 				= 0;
 
 		int r = thrd_create(thrds+tx, thrd_fun, (void*) (thrds_info+tx));
 		if ( r != thrd_success ) {
 			fprintf(stderr, "failed to create thread\n");
 			exit(1);
 		}
-    thrd_detach(thrds[tx]);
+    	thrd_detach(thrds[tx]);
 	}	
 
 
-  {
-    thrd_info_check.w 			= w;
-    thrd_info_check.f 			= f;
-		thrd_info_check.max_col_val  = 255;
-		thrd_info_check.file_conv    = file_conv;
-		thrd_info_check.file_attr    = file_attr;
-    thrd_info_check.sz 			= n_size;
-    thrd_info_check.d 			= n_d;
-    thrd_info_check.nthrds 	= n_threads;
-    thrd_info_check.mtx 		= &mtx;
-    thrd_info_check.cnd 		= &cnd;
+  	{
+    thrd_info_check.attractors 		= attractors;
+    thrd_info_check.convergences 	= convergences;
+	thrd_info_check.max_col_val 	= 255;
+	thrd_info_check.file_conv   	= file_conv;
+	thrd_info_check.file_attr   	= file_attr;
+    thrd_info_check.sz 				= n_size;
+    thrd_info_check.d 				= n_d;
+    thrd_info_check.nthrds 			= n_threads;
+    thrd_info_check.mtx 			= &mtx;
+    thrd_info_check.cnd 			= &cnd;
     // It is important that we have initialize status in the previous for-loop,
     // since it will be consumed by the check threads.
     thrd_info_check.status = status;
@@ -590,22 +535,21 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "failed to create thread\n");
       exit(1);
     }
-  }
+  	}
 
-  {
+  	{
     int r;
     thrd_join(thrd_check, &r);
-  }
+  	}
 
+	fclose(file_attr);
+	fclose(file_conv);
 
-  fclose(file_attr);
-  fclose(file_conv);
+	free(attractors);
+	free(convergences);
 
-  free(w);
-  free(f);
-
-  mtx_destroy(&mtx);
-  cnd_destroy(&cnd);
+	mtx_destroy(&mtx);
+	cnd_destroy(&cnd);
 	
 	return 0;
 }
