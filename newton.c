@@ -67,12 +67,12 @@ write_header(FILE *file, int n_size, int max_color_val){
 }
 
 static void
-write_conv(FILE *file, int* convergence, int n_size, char colors[])
+write_conv(FILE *file, int* convergence, int n_size, char colors[], char *row_str)
 {
   int color_str_len = 20;
   int row_str_len_sum = 0;
   int offset = 0;
-  char *row_str = (char*) malloc(n_size*color_str_len*sizeof(char));
+  // char *row_str = (char*) malloc(n_size*color_str_len*sizeof(char));
   // char colors[10000];
   // colors[0] = '\0';
 
@@ -106,11 +106,11 @@ write_conv(FILE *file, int* convergence, int n_size, char colors[])
   }
 
   fwrite(row_str, sizeof(char), row_str_len_sum, file);
-  free(row_str);
+  // free(row_str);
 }
 
 static void
-write_attr(FILE *file, int* attractor, int n_size, int n_degree, char colors[])
+write_attr(FILE *file, int* attractor, int n_size, int n_degree, char colors[], char* row_str)
 {
     int color_str_len = 12;
 
@@ -130,7 +130,7 @@ write_attr(FILE *file, int* attractor, int n_size, int n_degree, char colors[])
     // char colors[140] = "100 100 100\n100 100 255\n100 255 100\n100 255 255\n255 100 100\n255 100 255\n255 255 100\n255 255 255\n100 150 250\n250 150 100\n100 255 200\n";
     // sprintf(colors, "%s%s%s%s%s%s%s%s%s%s%s", c_0, c_1, c_2, c_3, c_4, c_5, c_6, c_7, c_8, c_9, c_10);
 
-    char *row_str = (char*) malloc(n_size*color_str_len*sizeof(char));
+    // char *row_str = (char*) malloc(n_size*color_str_len*sizeof(char));
 
     for ( size_t ix = 0, jx = 0; jx < n_size; ix += color_str_len, ++jx ){
       assert( attractor[jx] <= 10 && attractor[jx] >= 0);
@@ -138,7 +138,7 @@ write_attr(FILE *file, int* attractor, int n_size, int n_degree, char colors[])
     }
     
     fwrite( row_str, sizeof(char), n_size*color_str_len, file);
-    free(row_str);
+    // free(row_str);
 }
 
 static void poly_compute(float x, float y, float* z, int d)
@@ -359,18 +359,20 @@ int thrd_check_fun(void *args)
       }
     }
 
+    char *row_str = (char*) malloc(20*sz*sizeof(char));
+
     // We do not initialize ix in this loop, but in the outer one.
     for ( ; ix < ibnd; ++ix ) {
       // We free the component of w, since it will never be used again.
 			// write here
-			write_conv(file_conv, f[ix], sz, clrs_grey);
-			write_attr(file_attr, w[ix], sz, d, clrs_rgb);
+			write_conv(file_conv, f[ix], sz, clrs_grey, row_str);
+			write_attr(file_attr, w[ix], sz, d, clrs_rgb, row_str);
 			
       free(w[ix]);
       free(f[ix]);
     }
+    free(row_str);
   }
-
   return 0;
 }
 
