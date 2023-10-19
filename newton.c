@@ -86,6 +86,7 @@ write_conv(FILE *file, int* convergence, int n_size)
 
   // memcpy color strings to row_str
   for ( int ix = 0, jx = 0; jx < n_size; ix += color_str_len, ++jx ){
+    // printf("convergence[%i] = %i\n", jx, convergence[jx]);
     assert( 1 <= convergence[jx] && convergence[jx] <= 128 );
       if ( convergence[jx] <= 5 ){
           color_str_len = 6;
@@ -212,7 +213,7 @@ static void poly_iteration(float x, float y, int *ret, int d)
 	float roots_x[d];
 	float roots_y[d];
 	float pi = 3.141596536;
-	const int max_iters = 100;
+	const int max_iters = 128;
 	for (int r = 0; r < d; r++)
 	{
 		roots_x[r] = cos(r * 2.0f * pi/d);
@@ -221,21 +222,22 @@ static void poly_iteration(float x, float y, int *ret, int d)
 	float z[2];
 	float zr = x , zi = y;
 	float sq_norm, root_sq_norm;
-	for (int i = 0; i < max_iters; i++){
+    int i;
+	for ( i = 0; i < max_iters; i++){
 		poly_compute(zr, zi, z, d);
 		zr += -z[0];
 		zi += -z[1];
 		
 		if (fabs(zr) > 1e10 || fabs(zi) > 1e10){
 			ret[0] = 0;
-			ret[1] = i;
+			ret[1] = i+1;
 			break;
 		}
 		sq_norm = zr*zr + zi*zi;
 		
 		if (sq_norm < 1e-6){
 			ret[0] = 0;
-			ret[1] = i;
+			ret[1] = i+1;
 			break;
 		}
 		
@@ -243,12 +245,18 @@ static void poly_iteration(float x, float y, int *ret, int d)
 			root_sq_norm = SQ(zr - roots_x[j]) + SQ(zi - roots_y[j]);
 			if (root_sq_norm < 1e-6){
 				ret[0] = j+1;
-				ret[1] = i;
+				ret[1] = i+1;
 				i = max_iters;
 				break;
 			}
 		}
-	}	
+        
+	}
+    // temporary fix when none of the above cases hold after max iter
+    if ( ret[1] == 0 ){
+        ret[1] = max_iters;
+    }
+    
 }
 
 int thrd_write(void *args)
@@ -267,6 +275,8 @@ int thrd_write(void *args)
   mtx_t *mtx 					= thrd_wr_info->mtx;
   cnd_t *cnd 					= thrd_wr_info->cnd;
   int_padded *status 	= thrd_wr_info->status;
+
+  assert( f[0][0] != 0 );
 
   write_header(file_conv, sz, max_col_val);
   write_header(file_attr, sz, max_col_val);
@@ -320,8 +330,10 @@ int thrd_fun(void *args)
 			wix[3 * jx] 			= rgb_colors[3 * r_index]; 	// R
 			wix[3 * jx + 1] 	= rgb_colors[3 * r_index + 1]; // G
 			wix[3 * jx + 2] 	= rgb_colors[3 * r_index + 2]; // B
-			fix[jx] 					= r_iter; // (iters * 255.0f/100.0f, 255.0f);
-			printf("%d\n", r_iter);
+			fix[jx] 					= r_iter; // = MIN(iters * 255.0f/100.0f, 255.0f);
+
+            assert( r_iter != 0 );
+			
 		}
 
 		mtx_lock(mtx);
