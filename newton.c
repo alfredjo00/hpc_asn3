@@ -70,21 +70,21 @@ write_header(FILE *file, int n_size, int max_color_val){
 }
 
 static void
-write_conv(FILE *file, int* convergence, int n_size)
+write_conv(FILE *file, int* convergence, int n_size, char colors[])
 {
   int color_str_len = 20;
   int row_str_len_sum = 0;
   int offset = 0;
   char *row_str = (char*) malloc(n_size*color_str_len*sizeof(char));
-  char colors[10000];
-  colors[0] = '\0';
+  // char colors[10000];
+  // colors[0] = '\0';
 
-  // create colormap for greyvalues
-  for (int ix = 0; ix <= 254; ix += 2) {
-      char line[14];
-      snprintf(line, sizeof(line), "%i %i %i\n", ix, ix, ix);
-      strcat(colors, line);
-  }
+  // // create colormap for greyvalues
+  // for (int ix = 0; ix <= 254; ix += 2) {
+  //     char line[14];
+  //     snprintf(line, sizeof(line), "%i %i %i\n", ix, ix, ix);
+  //     strcat(colors, line);
+  // }
 
   // memcpy color strings to row_str
   for ( int ix = 0, jx = 0; jx < n_size; ix += color_str_len, ++jx ){
@@ -113,29 +113,30 @@ write_conv(FILE *file, int* convergence, int n_size)
 }
 
 static void
-write_attr(FILE *file, int* attractor, int n_size, int n_degree)
+write_attr(FILE *file, int* attractor, int n_size, int n_degree, char colors[])
 {
     int color_str_len = 12;
 
     // color map
-    char c_0[] = "100 100 100\n";
-    char c_1[] = "100 100 255\n";
-    char c_2[] = "100 255 100\n";
-    char c_3[] = "100 255 255\n";
-    char c_4[] = "255 100 100\n";
-    char c_5[] = "255 100 255\n";
-    char c_6[] = "255 255 100\n";
-    char c_7[] = "255 255 255\n";
-    char c_8[] = "100 150 250\n";
-    char c_9[] = "250 150 100\n";
+    // char c_0[] = "100 100 100\n";
+    // char c_1[] = "100 100 255\n";
+    // char c_2[] = "100 255 100\n";
+    // char c_3[] = "100 255 255\n";
+    // char c_4[] = "255 100 100\n";
+    // char c_5[] = "255 100 255\n";
+    // char c_6[] = "255 255 100\n";
+    // char c_7[] = "255 255 255\n";
+    // char c_8[] = "100 150 250\n";
+    // char c_9[] = "250 150 100\n";
+    // char c_10[] = "100 255 200\n";
 
-    char colors[140];
-    sprintf(colors, "%s%s%s%s%s%s%s%s%s%s", c_0, c_1, c_2, c_3, c_4, c_5, c_6, c_7, c_8, c_9);
+    // char colors[140] = "100 100 100\n100 100 255\n100 255 100\n100 255 255\n255 100 100\n255 100 255\n255 255 100\n255 255 255\n100 150 250\n250 150 100\n100 255 200\n";
+    // sprintf(colors, "%s%s%s%s%s%s%s%s%s%s%s", c_0, c_1, c_2, c_3, c_4, c_5, c_6, c_7, c_8, c_9, c_10);
 
     char *row_str = (char*) malloc(n_size*color_str_len*sizeof(char));
 
     for ( size_t ix = 0, jx = 0; jx < n_size; ix += color_str_len, ++jx ){
-      assert( attractor[jx] <= 9 && attractor[jx] >= 0);
+      assert( attractor[jx] <= 10 && attractor[jx] >= 0);
       memcpy( row_str + ix, colors + attractor[jx]*color_str_len, color_str_len);        
     }
     
@@ -287,10 +288,7 @@ int thrd_fun(void *args)
 			r_index = root[0];	
 			r_iter 	= root[1];
 			wix[jx] = r_index; 	// R
-			fix[jx] = r_iter; // = MIN(iters * 255.0f/100.0f, 255.0f);
-
-			assert( r_iter != 0 );
-			
+			fix[jx] = r_iter; // = MIN(iters * 255.0f/100.0f, 255.0f);			
 		}
 
 		mtx_lock(mtx);
@@ -320,6 +318,18 @@ int thrd_check_fun(void *args)
   cnd_t *cnd 					= thrd_info->cnd;
   int_padded *status 	= thrd_info->status;
 
+  // create colormaps
+  char clrs_grey[10000];
+  clrs_grey[0] = '\0';
+  // greyvalues
+  for (int ix = 0; ix <= 254; ix += 2) {
+      char line[14];
+      snprintf(line, sizeof(line), "%i %i %i\n", ix, ix, ix);
+      strcat(clrs_grey, line);
+  }
+  // rgb
+  char clrs_rgb[] = "100 100 100\n100 100 255\n100 255 100\n100 255 255\n255 100 100\n255 100 255\n255 255 100\n255 255 255\n100 150 250\n250 150 100\n100 255 200\n";
+
   write_header(file_conv, sz, max_col_val);
   write_header(file_attr, sz, max_col_val);
 	
@@ -348,8 +358,8 @@ int thrd_check_fun(void *args)
     for ( ; ix < ibnd; ++ix ) {
       // We free the component of w, since it will never be used again.
 			// write here
-			write_conv(file_conv, f[ix], sz);
-			write_attr(file_attr, w[ix], sz, d);
+			write_conv(file_conv, f[ix], sz, clrs_grey);
+			write_attr(file_attr, w[ix], sz, d, clrs_rgb);
 			
       free(w[ix]);
       free(f[ix]);
