@@ -11,3 +11,5 @@ newton : newton.c
 .PHONY : clean
 clean :
 	rm -rf $(BINS)
+	rm *.ppm
+	rm *.png
