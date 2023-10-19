@@ -8,9 +8,6 @@
 #include <limits.h>	
 
 #define SQ(x) ((x)*(x))
-#define CU(x) ((x)*(x)*(x))
-#define QD(x) ((x)*(x)*(x)*(x))
-#define QN(x) ((x)*(x)*(x)*(x)*(x))
 
 #define MIN(a,b) ({ __typeof__ (a) _a = (a); \
 										__typeof__ (b) _b = (b); \
@@ -163,10 +160,10 @@ static void poly_compute(float x, float y, float* z, int d)
 		}
 		case 3:
 		{
-			float sq_x = SQ(x), sq_y = SQ(y);
-			float cu_x = CU(x), cu_y = CU(y);
-			float qd_x = QD(x), qd_y = QD(y);
-			float qn_x = QN(x);
+			float sq_x = SQ(x), 	sq_y = SQ(y);
+			float cu_x = x*sq_x, 	cu_y = y*sq_y;
+			float qd_x = x*cu_x, 	qd_y = y*cu_y;
+			float qn_x = x*qd_x;
 			
 			float c = 3.0f * SQ(sq_x + sq_y);
 			z[0] = (qn_x + 2.0f * cu_x * sq_y - sq_x + x * qd_y + sq_y) / c;
@@ -175,32 +172,40 @@ static void poly_compute(float x, float y, float* z, int d)
 		}
 		case 4:
 		{
-			float sq_x = SQ(x), sq_y = SQ(y);
-			float cu_x = CU(x), cu_y = CU(y);
-			float qd_x = QD(x), qd_y = QD(y);
-			float qn_x = QN(x), qn_y = QN(y);
-			float he_x = SQ(cu_x), he_y = SQ(cu_y);
-			float sv_x = x*he_x, sv_y = y*he_y;
-			float c = 4.0f * CU(sq_x + sq_y);
-			z[0] =  sv_x + 3.0f*qn_x*sq_y + cu_x*(3.0f*qd_y - 1.0f) + x*sq_y*(qd_y + 3.0f);
-			z[1] = (he_x + 3.0f*qd_x*sq_y + 3.0f*sq_x*(qd_y + 1.0f) + sq_y*(qd_y - 1.0f)) * y / c;
+			float sq_x = SQ(x), 	sq_y = SQ(y);
+			float cu_x = x*sq_x, 	cu_y = y*sq_y;
+			float qd_x = x*cu_x, 	qd_y = y*cu_y;
+			float qn_x = x*qd_x,	qn_y = y*qd_y;
+			float he_x = x*qn_x,	he_y = y*qn_y;
+			float sv_x = x*he_x,	sv_y = y*he_y;
+			float oc_x = x*sv_x,	oc_y = y*sv_y;
+			
+			float c = 4.0f*he_x + 12.0f*qd_x*sq_y + 12.0f*sq_x*qd_y + 4.0f*he_y;
+			z[0] = sv_x + 3.0f*qn_x*sq_y + cu_x*(3.0f*qd_y - 1.0f) + x*sq_y*(qd_y + 3.0f);
+			z[0] = z[0]/c;
+			
+			z[1] = (he_x + 3.0f*qd_x*sq_y + 3.0f*sq_x*(qd_y + 1.0f) + sq_y*(qd_y - 1.0f)) * y;
+			z[1] = z[1]/c;
 			break;
 		}
 		case 5:
 		{
-			float sq_x = SQ(x), sq_y = SQ(y);
-			float cu_x = CU(x), cu_y = CU(y);
-			float qd_x = QD(x), qd_y = QD(y);
-			float qn_x = QN(x), qn_y = QN(y);
-			float he_x = SQ(cu_x), he_y = SQ(cu_y);
-			float sv_x = x*he_x, sv_y = y*he_y;
+			float sq_x = SQ(x), 	sq_y = SQ(y);
+			float cu_x = x*sq_x, 	cu_y = y*sq_y;
+			float qd_x = x*cu_x, 	qd_y = y*cu_y;
+			float qn_x = x*qd_x,	qn_y = y*qd_y;
+			float he_x = x*qn_x,	he_y = y*qn_y;
+			float sv_x = x*he_x,	sv_y = y*he_y;
+			float oc_x = x*sv_x,	oc_y = y*sv_y;
 			
-			float c = 5.0f * QD(sq_x + sq_y);
-			z[0] = (sq_x*sv_x + 4.0f*sv_x*sq_y + 6.0f*qn_x*qd_y - qd_x + 4.0f*cu_x*he_y +\
-							6.0f*sq_x*sq_y + x*y*sv_y - qd_y)/c;
-							
-			z[1] = (x*sv_x + 4.0f*he_x*sq_y + 6.0f*qd_x*qd_y + 4.0f*cu_x + 4.0f*qd_x*he_y -\
-							4.0f*x*sq_y + y*sv_y) * y/c;
+			
+			float c = 5.0f*oc_x + 20.0f*he_x*sq_y + 30.0f*qd_x*qd_y + 20.0f*sq_x*he_y + 5.0f*oc_y;
+			float a = oc_x + 4.0f*he_x*sq_y + 6.0f*qd_x*qd_y + 4.0f*sq_x*he_y + oc_y;
+			z[0] = x*a - qd_x + 6.0f*sq_x*sq_y - qd_y;
+			z[0] = z[0]/c;
+
+			z[1] = y*(a + 4.0f*cu_x - 4.0f*x*sq_y);
+			z[1] = z[1]/c;
 			break;
 		}
 			
