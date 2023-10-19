@@ -435,7 +435,7 @@ int thrd_check_fun(void *args)
       strcat(clrs_grey, line);
   }
   // rgb
-  char clrs_rgb[] = "100 100 100\n100 100 255\n100 255 100\n100 255 255\n255 100 100\n255 100 255\n255 255 100\n255 255 255\n100 150 250\n250 150 100\n100 255 200\n";
+  char clrs_rgb[] = "255 100 100\n100 100 255\n100 255 100\n100 255 255\n100 100 100\n255 100 255\n255 255 100\n255 255 255\n100 150 250\n250 150 100\n100 255 200\n";
 
   write_header(file_conv, sz, max_col_val);
   write_header(file_attr, sz, max_col_val);
